@@ -1,0 +1,395 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To do/Done Lists</title>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+        integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <style type="text/css">
+        .bgcol {
+            background-color: #041a7d;
+        }
+
+        .bgdel {
+            background-color: red;
+        }
+
+        .btncol {
+            background-color: #fff;
+            margin-left: 10;
+        }
+
+        .bgMargins {
+            margin-top: 30;
+            margin-left: 30;
+            margin-right: 30;
+            margin-bottom: 30;
+            padding-top: 5;
+            background-color: #ebedf5;
+        }
+
+        .formMargins {
+            margin-top: 30;
+            margin-left: 30;
+            margin-bottom: 30;
+            width: 320px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="row mt-5">
+                <div class="col-lg-4">
+                    <button :disabled="blockCreate" class="btn btn-primary" @click="dialog=true"><i
+                            class="fa fa-plus">&nbsp;&nbsp;Create</i></button>
+                    <button v-show="validAdd || validTodoDelete || validTerminate || validDoneDelete"
+                        class="btn btn-success" @click="validateAction()"><i
+                            class="fa fa-thumbs-up">&nbsp;&nbsp;Validate</i></button>
+                    <button type="cancel" v-show="validAdd || validTodoDelete || validTerminate || validDoneDelete"
+                        class="btn btn-danger" @click="cancel()"><i class="fa fa-ban">&nbsp;&nbsp;Cancel</i></button>
+
+                </div>
+                <div class="mt-3 alert alert-danger" v-show="errorMsg">
+                    {{errorMsg}}
+                </div>
+                <div class="mt-3 alert alert-success" v-show="successMsg">
+                    {{successMsg}}
+                </div>
+                <div class="mt-3 row">
+                    <div class="col-lg-6">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr class="text-center bg-light text-dark">
+                                    <th>
+                                        ToDo Active
+                                    </th>
+                                    <th>
+                                        {{todos.length}} Items
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="text-center" v-for="todo in todos">
+                                    <td>
+                                        {{todo.title}}
+                                    </td>
+                                    <td>
+                                        <button :disabled="blockTerminate" @click="selectTodo(todo);onTerminateTodo()"
+                                            class="btn btn-light text-success"><i class="fa fa-check"></i></button>
+                                        <button :disabled="blockDelete"
+                                            @click="validTodoDelete=true; selectTodo(todo);block()"
+                                            class="btn btn-light text-danger" style="margin-left: 25;"><i
+                                                class="fa fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-lg-6">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr class="text-center bg-light text-dark">
+                                    <th>
+                                        ToDo Terminated
+                                    </th>
+                                    <th>
+                                        {{dones.length}} Items
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="text-center" v-for="done in dones">
+                                    <td>
+                                        {{done.title}}
+                                    </td>
+                                    <td>
+                                        <button :disabled="blockDelete"
+                                            @click="validDoneDelete=true; selectDone(done);block()"
+                                            class="btn btn-light text-danger" style="margin-left: 25;"><i
+                                                class="fa fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Create Popup -->
+                <div data-app>
+                    <v-dialog v-model="dialog" persistent max-width="450">
+                        <v-card>
+                            <v-card-title class="pt-5 ml-2">
+                                <h3>Create an element</h3>
+                            </v-card-title>
+                            <v-form ref="form" class="bgMargins" v-model="valid">
+                                <div class="formMargins">
+                                    <label class="mb-2">
+                                        <h5>Title :</h5>
+                                    </label>
+                                    <v-text-field solo dense background-color="#fff" v-model="title" type="text"
+                                        :rules="titleRules" required></v-text-field>
+                                </div>
+                                <div class="formMargins ">
+                                    <label class="mb-2">
+                                        <h5>Description :</h5>
+                                    </label>
+                                    <v-textarea background-color="#fff" solo dense v-model="description" type="text"
+                                        :rules="descriptionRules" required></v-textarea>
+                                </div>
+                            </v-form>
+                            <v-card-actions class="bgcol">
+                                <v-spacer></v-spacer>
+                                <v-btn rounded outlined color="#fff" @click="dialog = false">
+                                    Cancel
+                                </v-btn>
+                                <v-btn :disabled="!valid" rounded outlined class="btncol" @click="onAddTodoActive()">
+                                    Add
+                                </v-btn>
+                            </v-card-actions>
+                        </v-card>
+                    </v-dialog>
+                </div>
+
+                <!-- Delete To do Popup -->
+                <div data-app>
+                    <v-dialog v-model="todoDeletedialog" persistent max-width="450">
+                        <v-card>
+                            <v-card-title class="text-center">
+                                <h3>Are you sure ?</h3>
+                            </v-card-title>
+                            <v-card-actions class="bgdel">
+                                <v-spacer></v-spacer>
+                                <v-btn rounded outlined color="#fff" @click="todoDeletedialog = false">
+                                    No
+                                </v-btn>
+                                <v-btn rounded outlined class="btncol" style="margin-left: 15;" @click="deleteTodo();todoDeletedialog=false">
+                                    Yes
+                                </v-btn>
+                            </v-card-actions>
+                        </v-card>
+                    </v-dialog>
+                </div>
+
+                <!-- Delete Done Popup -->
+                <div data-app>
+                    <v-dialog v-model="doneDeletedialog" persistent max-width="450">
+                        <v-card>
+                            <v-card-title class="text-center">
+                                <h3>Are you sure ?</h3>
+                            </v-card-title>
+                            <v-card-actions class="bgdel">
+                                <v-spacer></v-spacer>
+                                <v-btn rounded outlined color="#fff" @click="doneDeletedialog = false">
+                                    No
+                                </v-btn>
+                                <v-btn rounded outlined class="btncol" style="margin-left: 15;" @click="deleteDone()">
+                                    Yes
+                                </v-btn>
+                            </v-card-actions>
+                        </v-card>
+                    </v-dialog>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js
+    "></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>>
+        <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+        <script type="text/javascript">
+            var app = new Vue({
+                el: '#app',
+                vuetify: new Vuetify(),
+                data: {
+                    valid: false,
+                    blockCreate: false,
+                    blockTerminate: false,
+                    blockDelete: false,
+                    validAdd: false,
+                    validTodoDelete: false,
+                    validTerminate: false,
+                    validDoneDelete: false,
+                    dialog: false,
+                    todoDeletedialog: false,
+                    doneDeletedialog: false,
+                    titleRules: [(v) => !!v || "Title is required"],
+                    descriptionRules: [(v) => !!v || "Description is required"],
+                    errorMsg: "",
+                    successMsg: "",
+                    todos: [],
+                    dones: [],
+                    title: "",
+                    description: "",
+                    titleDone: "",
+                    descriptionDone: "",
+                    currentTodo: {},
+                    currentDone: {},
+                },
+                mounted: function () {
+                    this.getAllTodos();
+                    this.getAllDones();
+                },
+                methods: {
+                    block() {
+                        this.blockCreate = true;;
+                        this.blockTerminate = true;
+                        this.blockDelete = true;
+                    },
+                    unblock() {
+                        this.blockCreate = false;
+                        this.blockTerminate = false;
+                        this.blockDelete = false;
+                    },
+                    selectTodo(todo) {
+                        app.currentTodo = todo;
+                    },
+                    selectDone(done) {
+                        app.currentDone = done;
+                    },
+                    emptyFields() {
+                        this.title = "";
+                        this.description = "";
+                    },
+                    getAllTodos() {
+                        axios.get("http://localhost/test_technique/api/todo/read.php").
+                            then(function (response) {
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message
+                                }
+                                else {
+                                    app.todos = response.data;
+                                }
+                            })
+                    },
+                    async addTodo() {
+                        await axios
+                            .post("http://localhost/test_technique/api/todo/create.php", {
+                                title: this.title,
+                                description: this.description,
+                            })
+                            .then(function (response) {
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message;
+                                }
+                                else {
+                                    app.successMsg = response.data.message;
+                                    app.getAllTodos();
+                                    app.emptyFields();
+                                }
+                            })
+                    },
+                    deleteTodo() {
+                        axios.post("http://localhost/test_technique/api/todo/delete.php", app.currentTodo).
+                            then(function (response) {
+                                app.currentTodo = {};
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message;
+                                }
+                                else {
+                                    app.successMsg = response.data.message;
+                                    app.getAllTodos();
+                                }
+                            })
+                    },
+                    validateAction() {
+                        if (this.validAdd) {
+                            this.addTodo();
+                            this.validAdd = false;
+                        }
+                        else if (this.validTodoDelete) {
+                            this.todoDeletedialog = true;
+                            this.validTodoDelete = false;
+                        }
+                        else if (this.validTerminate) {
+                            this.terminate();
+                            this.validTerminate = false;
+                        }
+                        else if (this.validDoneDelete) {
+                            this.doneDeletedialog = true;
+                            this.validDoneDelete = false;
+                        }
+                        this.unblock();
+                    },
+                    onAddTodoActive() {
+                        const todo = { title: this.title, description: this.description };
+                        this.todos.push(todo);
+                        this.validAdd = true;
+                        this.block();
+                        this.dialog = false;
+                        this.$refs.form.validate();
+                        console.log(todo.length)
+                    },
+                    onTerminateTodo() {
+                        const done = { title: this.currentTodo.title, description: this.currentTodo.description };
+                        this.dones.push(done);
+                        this.validTerminate = true;
+                        this.block();
+                        this.titleDone = done.title;
+                        this.descriptionDone = done.description;
+                    },
+                    getAllDones() {
+                        axios.get("http://localhost/test_technique/api/done/read.php").
+                            then(function (response) {
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message
+                                }
+                                else {
+                                    app.dones = response.data;
+                                }
+                            })
+                    },
+                    async addDone() {
+                        await axios
+                            .post("http://localhost/test_technique/api/done/create.php", {
+                                title: this.titleDone,
+                                description: this.descriptionDone,
+                            })
+                            .then(function (response) {
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message;
+                                }
+                                else {
+                                    app.successMsg = response.data.message;
+                                }
+                            })
+                    },
+                    terminate() {
+                        this.deleteTodo();
+                        this.addDone();
+                        this.getAllDones();
+                        this.getAllTodos();
+                        this.successMsg = "Element terminated";
+                    },
+                    deleteDone() {
+                        axios.post("http://localhost/test_technique/api/done/delete.php", app.currentDone).
+                            then(function (response) {
+                                app.currentDone = {};
+                                if (response.data.error) {
+                                    app.errorMsg = response.data.message;
+                                }
+                                else {
+                                    app.successMsg = response.data.message;
+                                    app.doneDeletedialog=false;
+                                    app.getAllDones();
+                                }
+                            })
+                    },
+                    cancel() {
+                        location.reload()
+                    }
+
+                }
+            })
+        </script>
+</body>
+
+</html>
